@@ -24,7 +24,7 @@ export async function initializeEventProcessor(): Promise<EventProcessor> {
       host: REDIS_HOST,
       port: REDIS_PORT,
     },
-    incomingChannel: 'events:gateway',
+    incomingChannel: 'events:stickyNotes',
     outgoingChannel: 'events:broadcast',
     enableLogging: true,
   });
@@ -43,8 +43,8 @@ export async function initializeEventProcessor(): Promise<EventProcessor> {
 
   processorInstance = processor;
 
-  console.log('✓ Event Processor initialized');
-  console.log(`✓ Redis connection: ${REDIS_HOST}:${REDIS_PORT}`);
+  console.log('✓ Event Processor инициализирован');
+  console.log(`✓ Redis: ${REDIS_HOST}:${REDIS_PORT}`);
 
   return processor;
 }
@@ -60,6 +60,5 @@ export async function stopEventProcessor(): Promise<void> {
   if (processorInstance) {
     await processorInstance.stop();
     processorInstance = null;
-    console.log('✓ Event Processor stopped');
   }
 }

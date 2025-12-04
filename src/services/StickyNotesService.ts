@@ -4,6 +4,7 @@ import {
   IBroadcastEvent,
 } from 'krafter-socket-lib';
 import { getEventProcessor } from '../sockets/eventProcessor.js';
+import NotesRepository from '../repositories/NotesRepository.js';
 
 export interface StickyNote {
   id: string;
@@ -17,38 +18,37 @@ export interface StickyNote {
   updatedAt: number;
 }
 
-const notesStore = new Map<string, StickyNote>();
-
 export class StickyNotesService {
   private processor: EventProcessor;
+  private notesRepository: NotesRepository;
 
   constructor() {
     this.processor = getEventProcessor();
+    this.notesRepository = new NotesRepository();
     this.registerEventHandlers();
   }
 
+  // Помимо Event Processor обработки, здесь реализовано API для управления данными заметок
   private registerEventHandlers(): void {
     this.processor.registerEventHandler(
-      'note:create',
+      'stickyNotes:note:create',
       this.handleNoteCreate.bind(this)
     );
 
     this.processor.registerEventHandler(
-      'note:update',
+      'stickyNotes:note:update',
       this.handleNoteUpdate.bind(this)
     );
 
     this.processor.registerEventHandler(
-      'note:delete',
+      'stickyNotes:note:delete',
       this.handleNoteDelete.bind(this)
     );
 
     this.processor.registerEventHandler(
-      'note:move',
+      'stickyNotes:note:move',
       this.handleNoteMove.bind(this)
     );
-
-    console.log('✓ StickyNotes event handlers registered');
   }
 
   private async handleNoteCreate(
@@ -69,24 +69,20 @@ export class StickyNotesService {
       position: { x: number; y: number };
     };
 
-    const note: StickyNote = {
-      id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    const note = await this.notesRepository.create({
       title: payload.title,
       content: payload.content,
       color: payload.color || '#ffeb3b',
-      position: payload.position,
+      positionX: payload.position.x,
+      positionY: payload.position.y,
       userId: context.userId,
       roomId: context.roomId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    notesStore.set(note.id, note);
+    });
 
     return {
-      type: 'note:created',
+      type: 'stickyNotes:note:created',
       recipients: [],
-      payload: note,
+      payload: note.toClientJSON(),
     };
   }
 
@@ -108,7 +104,7 @@ export class StickyNotesService {
       color?: string;
     };
 
-    const note = notesStore.get(payload.noteId);
+    const note = await this.notesRepository.findById(payload.noteId);
     if (!note) {
       return {
         type: 'error',
@@ -128,17 +124,16 @@ export class StickyNotesService {
       };
     }
 
-    if (payload.title !== undefined) note.title = payload.title;
-    if (payload.content !== undefined) note.content = payload.content;
-    if (payload.color !== undefined) note.color = payload.color;
-    note.updatedAt = Date.now();
-
-    notesStore.set(note.id, note);
+    const updatedNote = await this.notesRepository.update(payload.noteId, {
+      title: payload.title,
+      content: payload.content,
+      color: payload.color,
+    });
 
     return {
-      type: 'note:updated',
+      type: 'stickyNotes:note:updated',
       recipients: [],
-      payload: note,
+      payload: updatedNote!.toClientJSON(),
     };
   }
 
@@ -155,7 +150,7 @@ export class StickyNotesService {
 
     const payload = context.event.payload as { noteId: string };
 
-    const note = notesStore.get(payload.noteId);
+    const note = await this.notesRepository.findById(payload.noteId);
     if (!note) {
       return {
         type: 'error',
@@ -175,10 +170,10 @@ export class StickyNotesService {
       };
     }
 
-    notesStore.delete(payload.noteId);
+    await this.notesRepository.delete(payload.noteId);
 
     return {
-      type: 'note:deleted',
+      type: 'stickyNotes:note:deleted',
       recipients: [],
       payload: { noteId: payload.noteId },
     };
@@ -194,31 +189,27 @@ export class StickyNotesService {
       position: { x: number; y: number };
     };
 
-    const note = notesStore.get(payload.noteId);
+    const note = await this.notesRepository.updatePosition(
+      payload.noteId,
+      payload.position.x,
+      payload.position.y
+    );
     if (!note) return null;
 
-    note.position = payload.position;
-    note.updatedAt = Date.now();
-
     return {
-      type: 'note:moved',
+      type: 'stickyNotes:note:moved',
       recipients: [],
       payload: {
         noteId: note.id,
-        position: note.position,
+        position: { x: note.positionX, y: note.positionY },
         userId: context.userId,
       },
     };
   }
 
   public async getNotesByRoom(roomId: string): Promise<StickyNote[]> {
-    const notes: StickyNote[] = [];
-    notesStore.forEach((note) => {
-      if (note.roomId === roomId) {
-        notes.push(note);
-      }
-    });
-    return notes;
+    const notes = await this.notesRepository.findByRoom(roomId);
+    return notes.map((note) => note.toClientJSON());
   }
 
   public async createNoteViaAPI(
@@ -231,22 +222,24 @@ export class StickyNotesService {
       position: { x: number; y: number };
     }
   ): Promise<StickyNote> {
-    const note: StickyNote = {
-      id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    const note = await this.notesRepository.create({
       title: data.title,
       content: data.content,
       color: data.color || '#ffeb3b',
-      position: data.position,
+      positionX: data.position.x,
+      positionY: data.position.y,
       userId,
       roomId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
+    });
 
-    notesStore.set(note.id, note);
+    const noteObj = note.toClientJSON();
 
-    await this.processor.broadcastToRoom(roomId, 'note:created', note);
+    await this.processor.broadcastToRoom(
+      roomId,
+      'stickyNotes:note:created',
+      noteObj
+    );
 
-    return note;
+    return noteObj;
   }
 }

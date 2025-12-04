@@ -22,12 +22,12 @@ const sequelize = new Sequelize({
 export const connectDatabase = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
-    console.log('✓ Database connection established successfully');
+    console.log('Подключение к БД установлено');
 
     await sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
-    console.log('✓ Database models synchronized');
+    console.log('Модели БД синхронизированы');
   } catch (error) {
-    console.error('✗ Unable to connect to the database:', error);
+    console.error('Ошибка подключения к БД:', error);
     process.exit(1);
   }
 };
