@@ -1,0 +1,65 @@
+import {
+  EventProcessor,
+  RedisSessionCache,
+  MemoryAuthProvider,
+  IEventContext,
+  IBroadcastEvent,
+} from 'krafter-socket-lib';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379', 10);
+
+let processorInstance: EventProcessor | null = null;
+
+export async function initializeEventProcessor(): Promise<EventProcessor> {
+  if (processorInstance) {
+    return processorInstance;
+  }
+
+  const processor = new EventProcessor({
+    redis: {
+      host: REDIS_HOST,
+      port: REDIS_PORT,
+    },
+    incomingChannel: 'events:gateway',
+    outgoingChannel: 'events:broadcast',
+    enableLogging: true,
+  });
+
+  const authProvider = new MemoryAuthProvider();
+
+  const sessionCache = new RedisSessionCache({
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+  });
+
+  processor.setAuthProvider(authProvider);
+  processor.setSessionCache(sessionCache);
+
+  await processor.start();
+
+  processorInstance = processor;
+
+  console.log('✓ Event Processor initialized');
+  console.log(`✓ Redis connection: ${REDIS_HOST}:${REDIS_PORT}`);
+
+  return processor;
+}
+
+export function getEventProcessor(): EventProcessor {
+  if (!processorInstance) {
+    throw new Error('Event Processor not initialized. Call initializeEventProcessor() first.');
+  }
+  return processorInstance;
+}
+
+export async function stopEventProcessor(): Promise<void> {
+  if (processorInstance) {
+    await processorInstance.stop();
+    processorInstance = null;
+    console.log('✓ Event Processor stopped');
+  }
+}
