@@ -286,7 +286,7 @@
         // Загрузка всех заметок через API
         async function loadNotes() {
             try {
-                const response = await fetch(`${API_URL}/api/notes/${ROOM_ID}`);
+                const response = await fetch(`${API_URL}/api/notes/room/${ROOM_ID}`);
                 const data = await response.json();
 
                 console.log('Loaded notes:', data);

@@ -194,6 +194,71 @@ export class StickyNotesService {
     return notes.map((note) => note.toClientJSON());
   }
 
+  public async getNoteById(noteId: string): Promise<StickyNote | null> {
+    const note = await this.notesRepository.findById(noteId);
+    return note ? note.toClientJSON() : null;
+  }
+
+  public async updateNote(
+    noteId: string,
+    data: {
+      title?: string;
+      content?: string;
+      color?: string;
+    }
+  ): Promise<StickyNote | null> {
+    const note = await this.notesRepository.update(noteId, data);
+
+    if (note) {
+      await this.processor.broadcast({
+        type: 'stickyNotes:note:updated',
+        recipients: [],
+        payload: note.toClientJSON(),
+      });
+    }
+
+    return note ? note.toClientJSON() : null;
+  }
+
+  public async deleteNote(noteId: string): Promise<boolean> {
+    const note = await this.notesRepository.findById(noteId);
+
+    if (!note) {
+      return false;
+    }
+
+    await this.notesRepository.delete(noteId);
+
+    await this.processor.broadcast({
+      type: 'stickyNotes:note:deleted',
+      recipients: [],
+      payload: {
+        noteId: noteId,
+        roomId: note.roomId,
+      },
+    });
+
+    return true;
+  }
+
+  public async moveNote(noteId: string, x: number, y: number): Promise<StickyNote | null> {
+    const note = await this.notesRepository.updatePosition(noteId, x, y);
+
+    if (note) {
+      await this.processor.broadcast({
+        type: 'stickyNotes:note:moved',
+        recipients: [],
+        payload: {
+          noteId: note.id,
+          position: { x: note.positionX, y: note.positionY },
+          roomId: note.roomId,
+        },
+      });
+    }
+
+    return note ? note.toClientJSON() : null;
+  }
+
   public async createNoteViaAPI(
     userId: string,
     roomId: string,

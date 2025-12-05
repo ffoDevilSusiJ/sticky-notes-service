@@ -93,6 +93,162 @@ class StickyNotesController {
       });
     }
   }
+
+  async getNoteById(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.service) {
+        res.status(500).json({
+          success: false,
+          message: 'StickyNotes service not initialized',
+        });
+        return;
+      }
+
+      const { noteId } = req.params;
+
+      const note = await this.service.getNoteById(noteId);
+
+      if (!note) {
+        res.status(404).json({
+          success: false,
+          message: 'Note not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: note,
+      });
+    } catch (error) {
+      console.error('Error fetching note:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch note',
+      });
+    }
+  }
+
+  async updateNote(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.service) {
+        res.status(500).json({
+          success: false,
+          message: 'StickyNotes service not initialized',
+        });
+        return;
+      }
+
+      const { noteId } = req.params;
+      const { title, content, color } = req.body;
+
+      const note = await this.service.updateNote(noteId, {
+        title,
+        content,
+        color,
+      });
+
+      if (!note) {
+        res.status(404).json({
+          success: false,
+          message: 'Note not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: note,
+        message: 'Note updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating note:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update note',
+      });
+    }
+  }
+
+  async deleteNote(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.service) {
+        res.status(500).json({
+          success: false,
+          message: 'StickyNotes service not initialized',
+        });
+        return;
+      }
+
+      const { noteId } = req.params;
+
+      const success = await this.service.deleteNote(noteId);
+
+      if (!success) {
+        res.status(404).json({
+          success: false,
+          message: 'Note not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'Note deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete note',
+      });
+    }
+  }
+
+  async moveNote(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.service) {
+        res.status(500).json({
+          success: false,
+          message: 'StickyNotes service not initialized',
+        });
+        return;
+      }
+
+      const { noteId } = req.params;
+      const { position } = req.body;
+
+      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+        res.status(400).json({
+          success: false,
+          message: 'Position with x and y coordinates is required',
+        });
+        return;
+      }
+
+      const note = await this.service.moveNote(noteId, position.x, position.y);
+
+      if (!note) {
+        res.status(404).json({
+          success: false,
+          message: 'Note not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: note,
+        message: 'Note moved successfully',
+      });
+    } catch (error) {
+      console.error('Error moving note:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to move note',
+      });
+    }
+  }
 }
 
 export default new StickyNotesController();
