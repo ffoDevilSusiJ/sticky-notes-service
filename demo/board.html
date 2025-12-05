@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Notes Board - Room 1</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #board {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sticky-note {
+            position: absolute;
+            width: 200px;
+            min-height: 150px;
+            padding: 15px;
+            background: #ffeb3b;
+            border-radius: 3px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+            cursor: move;
+            transition: box-shadow 0.2s;
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+
+        .sticky-note:hover {
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 3px 6px rgba(0,0,0,0.1);
+        }
+
+        .sticky-note.dragging {
+            opacity: 0.7;
+            z-index: 1000;
+        }
+
+        .note-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 16px;
+            border: none;
+            background: transparent;
+            width: 100%;
+            outline: none;
+            color: #333;
+        }
+
+        .note-content {
+            font-size: 14px;
+            line-height: 1.4;
+            border: none;
+            background: transparent;
+            width: 100%;
+            min-height: 60px;
+            resize: none;
+            outline: none;
+            color: #555;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .note-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            background: rgba(0,0,0,0.1);
+            color: #333;
+            transition: background 0.2s;
+        }
+
+        .note-btn:hover {
+            background: rgba(0,0,0,0.2);
+        }
+
+        .note-btn.delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .note-btn.delete:hover {
+            background: #d32f2f;
+        }
+
+        .toolbar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .toolbar button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .toolbar button:hover {
+            background: #5568d3;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 5px;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: border 0.2s;
+        }
+
+        .color-option:hover {
+            border-color: rgba(0,0,0,0.3);
+        }
+
+        .color-option.selected {
+            border-color: #333;
+        }
+
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 14px;
+        }
+
+        .status.connected {
+            color: #4caf50;
+        }
+
+        .status.disconnected {
+            color: #f44336;
+        }
+
+        #userId {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="createNote()">+ Новая заметка</button>
+        <div class="color-picker">
+            <div class="color-option selected" style="background: #ffeb3b" data-color="#ffeb3b"></div>
+            <div class="color-option" style="background: #ff9800" data-color="#ff9800"></div>
+            <div class="color-option" style="background: #f44336" data-color="#f44336"></div>
+            <div class="color-option" style="background: #e91e63" data-color="#e91e63"></div>
+            <div class="color-option" style="background: #9c27b0" data-color="#9c27b0"></div>
+            <div class="color-option" style="background: #2196f3" data-color="#2196f3"></div>
+            <div class="color-option" style="background: #4caf50" data-color="#4caf50"></div>
+        </div>
+        <span id="userId"></span>
+    </div>
+
+    <div class="status disconnected" id="status">Отключен</div>
+
+    <div id="board"></div>
+
+    <script>
+        const GATEWAY_URL = 'http://localhost:3001';
+        const API_URL = 'http://localhost:3000';
+        const ROOM_ID = 'room-1';
+        const TOKEN = `test-token${Math.floor(Math.random() * 1000)}`;
+
+        let socket = null;
+        let userId = null;
+        let selectedColor = '#ffeb3b';
+        let notes = new Map();
+        let draggedNote = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Инициализация
+        async function init() {
+            await connectSocket();
+            await loadNotes();
+            setupColorPicker();
+        }
+
+        // Подключение к Socket.IO Gateway
+        function connectSocket() {
+            return new Promise((resolve, reject) => {
+                socket = io(GATEWAY_URL);
+
+                socket.on('connect', () => {
+                    console.log('Connected to gateway:', socket.id);
+
+                    // Аутентификация
+                    socket.emit('authenticate', { token: TOKEN, roomId: ROOM_ID });
+                });
+
+                socket.on('authenticated', (data) => {
+                    console.log('Authenticated:', data);
+                    userId = data.userId;
+                    document.getElementById('userId').textContent = `User: ${userId}`;
+                    document.getElementById('status').textContent = 'Подключен';
+                    document.getElementById('status').className = 'status connected';
+                    resolve();
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('Disconnected from gateway');
+                    document.getElementById('status').textContent = 'Отключен';
+                    document.getElementById('status').className = 'status disconnected';
+                });
+
+                socket.on('error', (error) => {
+                    console.error('Socket error:', error);
+                    alert(`Error: ${error.message || error.code}`);
+                });
+
+                // Слушаем события создания заметок
+                socket.on('stickyNotes:note:created', (data) => {
+                    console.log('Note created:', data);
+                    addNoteToBoard(data);
+                });
+
+                // Слушаем события обновления заметок
+                socket.on('stickyNotes:note:updated', (data) => {
+                    console.log('Note updated:', data);
+                    updateNoteOnBoard(data);
+                });
+
+                // Слушаем события удаления заметок
+                socket.on('stickyNotes:note:deleted', (data) => {
+                    console.log('Note deleted:', data);
+                    removeNoteFromBoard(data.noteId);
+                });
+
+                // Слушаем события перемещения заметок
+                socket.on('stickyNotes:note:moved', (data) => {
+                    console.log('Note moved:', data);
+                    moveNoteOnBoard(data.noteId, data.position);
+                });
+            });
+        }
+
+        // Загрузка всех заметок через API
+        async function loadNotes() {
+            try {
+                const response = await fetch(`${API_URL}/api/notes/${ROOM_ID}`);
+                const data = await response.json();
+
+                console.log('Loaded notes:', data);
+
+                if (data.data && Array.isArray(data.data)) {
+                    data.data.forEach(note => {
+                        addNoteToBoard(note);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load notes:', error);
+                alert('Не удалось загрузить заметки');
+            }
+        }
+
+        // Создание новой заметки
+        function createNote() {
+            const position = {
+                x: Math.random() * (window.innerWidth - 250),
+                y: Math.random() * (window.innerHeight - 200)
+            };
+
+            socket.emit('stickyNotes:note:create', {
+                title: 'Новая заметка',
+                content: 'Введите текст...',
+                color: selectedColor,
+                position: position
+            });
+        }
+
+        // Добавление заметки на доску
+        function addNoteToBoard(noteData) {
+            if (notes.has(noteData.id)) {
+                return; // Заметка уже существует
+            }
+
+            const noteEl = document.createElement('div');
+            noteEl.className = 'sticky-note';
+            noteEl.id = `note-${noteData.id}`;
+            noteEl.style.left = noteData.position.x + 'px';
+            noteEl.style.top = noteData.position.y + 'px';
+            noteEl.style.background = noteData.color;
+
+            noteEl.innerHTML = `
+                <input class="note-title" value="${escapeHtml(noteData.title)}" />
+                <textarea class="note-content">${escapeHtml(noteData.content)}</textarea>
+                <div class="note-actions">
+                    <button class="note-btn" onclick="saveNote('${noteData.id}')">Сохранить</button>
+                    <button class="note-btn delete" onclick="deleteNote('${noteData.id}')">Удалить</button>
+                </div>
+            `;
+
+            // Перетаскивание
+            noteEl.addEventListener('mousedown', startDrag);
+
+            document.getElementById('board').appendChild(noteEl);
+            notes.set(noteData.id, noteData);
+        }
+
+        // Обновление заметки на доске
+        function updateNoteOnBoard(noteData) {
+            const noteEl = document.getElementById(`note-${noteData.id}`);
+            if (!noteEl) {
+                addNoteToBoard(noteData);
+                return;
+            }
+
+            noteEl.querySelector('.note-title').value = noteData.title;
+            noteEl.querySelector('.note-content').value = noteData.content;
+            noteEl.style.background = noteData.color;
+
+            notes.set(noteData.id, noteData);
+        }
+
+        // Удаление заметки с доски
+        function removeNoteFromBoard(noteId) {
+            const noteEl = document.getElementById(`note-${noteId}`);
+            if (noteEl) {
+                noteEl.remove();
+            }
+            notes.delete(noteId);
+        }
+
+        // Перемещение заметки на доске
+        function moveNoteOnBoard(noteId, position) {
+            const noteEl = document.getElementById(`note-${noteId}`);
+            if (noteEl) {
+                noteEl.style.left = position.x + 'px';
+                noteEl.style.top = position.y + 'px';
+            }
+
+            const noteData = notes.get(noteId);
+            if (noteData) {
+                noteData.position = position;
+            }
+        }
+
+        // Сохранение изменений заметки
+        function saveNote(noteId) {
+            const noteEl = document.getElementById(`note-${noteId}`);
+            const title = noteEl.querySelector('.note-title').value;
+            const content = noteEl.querySelector('.note-content').value;
+
+            socket.emit('stickyNotes:note:update', {
+                noteId: noteId,
+                title: title,
+                content: content,
+                color: selectedColor
+            });
+        }
+
+        // Удаление заметки
+        function deleteNote(noteId) {
+            if (confirm('Удалить заметку?')) {
+                socket.emit('stickyNotes:note:delete', {
+                    noteId: noteId
+                });
+            }
+        }
+
+        // Drag and Drop
+        function startDrag(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') {
+                return;
+            }
+
+            draggedNote = e.currentTarget;
+            draggedNote.classList.add('dragging');
+
+            const rect = draggedNote.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function onDrag(e) {
+            if (!draggedNote) return;
+
+            const x = e.clientX - dragOffset.x;
+            const y = e.clientY - dragOffset.y;
+
+            draggedNote.style.left = x + 'px';
+            draggedNote.style.top = y + 'px';
+        }
+
+        function stopDrag(e) {
+            if (!draggedNote) return;
+
+            draggedNote.classList.remove('dragging');
+
+            const noteId = draggedNote.id.replace('note-', '');
+            const x = parseInt(draggedNote.style.left);
+            const y = parseInt(draggedNote.style.top);
+
+            // Отправляем событие перемещения
+            socket.emit('stickyNotes:note:move', {
+                noteId: noteId,
+                position: { x, y }
+            });
+
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            draggedNote = null;
+        }
+
+        // Выбор цвета
+        function setupColorPicker() {
+            const colors = document.querySelectorAll('.color-option');
+            colors.forEach(color => {
+                color.addEventListener('click', () => {
+                    colors.forEach(c => c.classList.remove('selected'));
+                    color.classList.add('selected');
+                    selectedColor = color.dataset.color;
+                });
+            });
+        }
+
+        // Экранирование HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Запуск приложения
+        init();
+    </script>
+</body>
+</html>
