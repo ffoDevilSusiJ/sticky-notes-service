@@ -2,7 +2,7 @@ import {
   EventProcessor,
   IEventContext,
   IBroadcastEvent,
-} from 'krafter-socket-lib';
+} from '../lib/index.js';
 import { getEventProcessor } from '../sockets/eventProcessor.js';
 import NotesRepository from '../repositories/NotesRepository.js';
 

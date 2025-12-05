@@ -28,9 +28,10 @@
     "pg-hstore": "^2.3.4",
     "dotenv": "^16.3.1",
     "cors": "^2.8.5",
-    "krafter-socket-lib": "file:../krafter-socket-lib",
     "ioredis": "^5.3.2",
-    "umzug": "^3.8.1"
+    "umzug": "^3.8.1",
+    "socket.io": "^4.8.1",
+    "redis": "^4.6.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

@@ -4,7 +4,7 @@ import {
   MemoryAuthProvider,
   IEventContext,
   IBroadcastEvent,
-} from 'krafter-socket-lib';
+} from '../lib/index.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
