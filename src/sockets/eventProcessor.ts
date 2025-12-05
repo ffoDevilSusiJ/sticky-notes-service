@@ -1,6 +1,5 @@
 import {
   EventProcessor,
-  RedisSessionCache,
   MemoryAuthProvider,
   IEventContext,
   IBroadcastEvent,
@@ -31,13 +30,7 @@ export async function initializeEventProcessor(): Promise<EventProcessor> {
 
   const authProvider = new MemoryAuthProvider();
 
-  const sessionCache = new RedisSessionCache({
-    host: REDIS_HOST,
-    port: REDIS_PORT,
-  });
-
   processor.setAuthProvider(authProvider);
-  processor.setSessionCache(sessionCache);
 
   await processor.start();
 

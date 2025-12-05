@@ -175,7 +175,10 @@ export class StickyNotesService {
     return {
       type: 'stickyNotes:note:deleted',
       recipients: [],
-      payload: { noteId: payload.noteId },
+      payload: {
+        noteId: payload.noteId,
+        roomId: context.roomId,
+      },
     };
   }
 
@@ -203,6 +206,7 @@ export class StickyNotesService {
         noteId: note.id,
         position: { x: note.positionX, y: note.positionY },
         userId: context.userId,
+        roomId: context.roomId,
       },
     };
   }
