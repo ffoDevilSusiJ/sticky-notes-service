@@ -245,12 +245,6 @@ export class EventProcessor {
       );
     }
 
-    if (!this.sessionCache) {
-      throw new Error(
-        'Session cache must be set before starting Event Processor. Call setSessionCache() first.'
-      );
-    }
-
     this.logger.info('Запуск обработчика событий...');
 
     await this.redisPubSub.subscribe(

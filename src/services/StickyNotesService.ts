@@ -238,11 +238,11 @@ export class StickyNotesService {
 
     const noteObj = note.toClientJSON();
 
-    await this.processor.broadcastToRoom(
-      roomId,
-      'stickyNotes:note:created',
-      noteObj
-    );
+    await this.processor.broadcast({
+      type: 'stickyNotes:note:created',
+      recipients: [],
+      payload: noteObj,
+    });
 
     return noteObj;
   }
