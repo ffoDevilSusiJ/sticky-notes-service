@@ -1,0 +1,176 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-11-05T03:23:11.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_sticky_notes",
+      "parentId": null,
+      "_type": "workspace",
+      "name": "Sticky Notes API",
+      "description": "REST API для работы с заметками на доске",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_sticky_notes",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3000",
+        "room_id": "room-1",
+        "user_id": "user_test-token",
+        "note_id": "a9026297-842f-40bd-b2da-3e2a5ad7bf30"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "room_id", "user_id", "note_id"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1
+    },
+    {
+      "_id": "req_health_check",
+      "parentId": "fld_general",
+      "_type": "request",
+      "name": "Health Check",
+      "description": "Проверка работоспособности API",
+      "url": "{{ _.base_url }}/",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 1
+    },
+    {
+      "_id": "fld_general",
+      "parentId": "wrk_sticky_notes",
+      "_type": "request_group",
+      "name": "01. General",
+      "description": "Общие эндпоинты",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 1
+    },
+    {
+      "_id": "req_get_notes_by_room",
+      "parentId": "fld_notes",
+      "_type": "request",
+      "name": "Get Notes by Room",
+      "description": "Получить все заметки в комнате",
+      "url": "{{ _.base_url }}/api/notes/room/{{ _.room_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 1
+    },
+    {
+      "_id": "fld_notes",
+      "parentId": "wrk_sticky_notes",
+      "_type": "request_group",
+      "name": "02. Notes CRUD",
+      "description": "CRUD операции с заметками",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 2
+    },
+    {
+      "_id": "req_get_note_by_id",
+      "parentId": "fld_notes",
+      "_type": "request",
+      "name": "Get Note by ID",
+      "description": "Получить заметку по ID",
+      "url": "{{ _.base_url }}/api/notes/{{ _.note_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 2
+    },
+    {
+      "_id": "req_create_note",
+      "parentId": "fld_notes",
+      "_type": "request",
+      "name": "Create Note",
+      "description": "Создать новую заметку",
+      "url": "{{ _.base_url }}/api/notes",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userId\": \"{{ _.user_id }}\",\n  \"roomId\": \"{{ _.room_id }}\",\n  \"title\": \"Новая заметка\",\n  \"content\": \"Содержимое заметки\",\n  \"color\": \"#ffeb3b\",\n  \"position\": {\n    \"x\": 100,\n    \"y\": 100\n  }\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 3
+    },
+    {
+      "_id": "req_update_note",
+      "parentId": "fld_notes",
+      "_type": "request",
+      "name": "Update Note",
+      "description": "Обновить заметку (title, content, color)",
+      "url": "{{ _.base_url }}/api/notes/{{ _.note_id }}",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Обновленный заголовок\",\n  \"content\": \"Обновленное содержимое\",\n  \"color\": \"#4caf50\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 4
+    },
+    {
+      "_id": "req_move_note",
+      "parentId": "fld_notes",
+      "_type": "request",
+      "name": "Move Note",
+      "description": "Переместить заметку на новую позицию",
+      "url": "{{ _.base_url }}/api/notes/{{ _.note_id }}/move",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"position\": {\n    \"x\": 250,\n    \"y\": 150\n  }\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 5
+    },
+    {
+      "_id": "req_delete_note",
+      "parentId": "fld_notes",
+      "_type": "request",
+      "name": "Delete Note",
+      "description": "Удалить заметку",
+      "url": "{{ _.base_url }}/api/notes/{{ _.note_id }}",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 6
+    }
+  ]
+}

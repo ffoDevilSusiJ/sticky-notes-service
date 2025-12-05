@@ -1,57 +1,75 @@
-# KRAFTEK TZ - Sticky Notes Service
+# Sticky Notes Service
 
-Cервис обработки "Sticky Notes".
+Микросервис для работы с заметками на виртуальной доске с WebSocket синхронизацией.
 
-Реализован через Event-Driven паттерн, в основном использует 
+## Требования
 
-`kraftek-socket-backend-lib` используется как основная библиотека для реализации Event-Drive паттерна.
+Для работы с real-time событиями требуется запустить `kraftek-socket-gateway`</br>
+Без него сервис работает как REST api сервис для notes
 
+- **Gateway**: [kraftek-socket-gateway](https://github.com/ffoDevilSusiJ/kraftek-socket-gateway)
+- Node.js 20+
+- PostgreSQL 16
+- Redis 7
 
-## Схема
+## Быстрый старт (Docker)
 
-Общая диаграма последовательностей описана в `diagrams/sequenceSocketArch.mermaid`
+```bash
+# 1. Клонировать репозитории
+git clone https://github.com/ffoDevilSusiJ/kraftek-socket-gateway
+git clone https://github.com/ffoDevilSusiJ/sticky-notes-service
 
-### Диаграмма последовательностей: Передвижение заметки
+# 2. Запустить gateway (для работы realtime событий)
+cd kraftek-socket-gateway
+docker-compose up -d
 
-Процесс передвижения заметки двумя пользователями в canvas (подробная версия в `diagrams/noteMovementSequence.mermaid`).
-
-**Примечание:** Диаграмма подключения/отключения находится в `kraftek-socket-gateway/connectionSequence.mermaid`
-
-
-## Структура проекта
-
-API реализовано по методологии REST с применением MVC
-
-Контроллеры `src\controllers`
-Модели      `src\models`
-Сервисы     `src\services`
-
-## Project Structure
-
-```
-.
-├── src/
-│   ├── config/          # Конфиги
-│   │   └── database.ts
-│   ├── models/          # Модели
-│   │   └── index.ts
-│   ├── controllers/     # Контроллеры
-│   │   └── UserController.ts
-│   ├── routes/          # Маршрутизация
-│   │   ├── userRoutes.ts
-│   │   └── index.ts
-│   ├── middleware/      # Middleware
-│   │   └── errorHandler.ts
-│   ├── sockets/         # Event Processor
-│   │   └── eventProcessor.ts
-│   ├── services/        # Сервисы
-│   │   └── StickyNotesService.ts
-│   ├── app.ts
-│   └── server.ts
-├── docker-compose.yml
-├── .env
-└── package.json
-
+# 3. Запустить sticky-notes-service
+cd ../sticky-notes-service
+docker-compose up -d
 ```
 
+Сервис доступен: http://localhost:3000
 
+## Локальный запуск
+
+```bash
+# 1. Установить зависимости
+npm install
+
+# 2. Настроить .env
+cp .env.example .env
+
+# 3. Запустить PostgreSQL и Redis
+
+# 4. Запустить в dev режиме
+npm run dev
+```
+
+## API Endpoints
+
+- `GET /api/notes/room/:roomId` - Получить все заметки комнаты
+- `GET /api/notes/:noteId` - Получить заметку по ID
+- `POST /api/notes` - Создать заметку
+- `PUT /api/notes/:noteId` - Обновить заметку
+- `DELETE /api/notes/:noteId` - Удалить заметку
+- `PATCH /api/notes/:noteId/move` - Переместить заметку
+
+## WebSocket Events
+
+- `stickyNotes:note:create` - Создать заметку
+- `stickyNotes:note:update` - Обновить заметку
+- `stickyNotes:note:delete` - Удалить заметку
+- `stickyNotes:note:move` - Переместить заметку
+
+## Демо
+
+Откройте `demo/board.html` в браузере для интерактивной доски с заметками.
+
+## Тестирование API
+
+Импортируйте `sticky-notes-insomnia-collection.json` в Insomnia/Postman.
+
+## Диаграммы
+
+- [Архитектура Socket.IO](./diagrams/sequenceSocketArch.mermaid) - Общая диаграмма последовательности работы с WebSocket
+- [Перемещение заметки](./diagrams/noteMovementSequence.mermaid) - Подробная диаграмма процесса передвижения заметки
